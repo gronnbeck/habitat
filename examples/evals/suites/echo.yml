@@ -1,0 +1,53 @@
+name: echo agent
+target: echo_agent
+default_repetitions: 2
+
+policy:
+  minimum_pass_rate: 1.0
+  critical_cases_must_pass: true
+
+cases:
+  - id: it echoes the message back
+    title: The agent repeats what it was given, verbatim
+    description: >
+      The baseline case. Everything else in this suite is a variation on it,
+      so if this one breaks, read it before reading the others.
+    critical: true
+    tags: [echo, smoke]
+    input:
+      message: hello
+    expectations:
+      - type: no_error
+      # Grade the structured field, not the sentence around it — prose wording
+      # can vary between correct runs, a structured field cannot.
+      - type: state_match
+        path: echoed
+        value: hello
+      - type: state_match
+        path: length
+        value: 5
+      - type: includes
+        value: hello
+
+  - id: it handles an empty message
+    title: An empty input is answered, not crashed on
+    input:
+      message: ""
+    expectations:
+      - type: no_error
+      - type: state_match
+        path: length
+        value: 0
+
+  - id: it answers quickly
+    title: A local echo has no excuse to be slow
+    input:
+      message: speed
+    expectations:
+      - type: no_error
+      - type: maximum_duration
+        maximum_ms: 1000
+      - type: json_schema
+        schema:
+          type: string
+          pattern: "^you said: "

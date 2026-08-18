@@ -58,7 +58,25 @@ Commit messages are short, descriptive sentences in the imperative,
 describing the effect of the change — not a `type: subject` prefix. E.g.
 "Grade structured fields instead of prose," not "feat: improve grading."
 
+## Running it
+
+```
+go build -o habitat ./cmd/habitat
+./habitat validate --dir examples     # free — calls no target
+./habitat run echo --dir examples     # runs the example agent end to end
+./habitat serve --dir examples        # browse the runs at :7878
+```
+
+`examples/` is a complete working project: `habitat.yml`, one suite, and a
+runner declaring a fake agent that costs nothing to execute. It is the
+fastest way to see the whole loop, and the thing to check against when the
+engine and an SDK disagree.
+
 ## Status
 
-Pre-implementation. `docs/*.md` is the current source of truth; nothing
-under `cmd/` or `internal/` exists yet.
+MVP engine works end to end: suite parsing and validation, the graders in
+[`docs/features-spec.md`](docs/features-spec.md) marked MVP, suite policy,
+SQLite persistence, terminal and JSON reports, and the `serve` dashboard.
+The Ruby SDK under `sdk/ruby/` registers targets and hands off to its
+runner. Not yet built: baseline diffing, the `rubric` grader and its judge,
+trace-based graders, JUnit/HTML reports, and generated INV/DIR cases.

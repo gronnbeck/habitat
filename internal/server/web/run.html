@@ -1,0 +1,66 @@
+{{define "run.html"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Run.SuiteName}} — habitat</title>
+{{template "style.html"}}
+</head>
+<body>
+<header>
+  <p class="sub"><a href="/">&larr; all runs</a></p>
+  <h1>{{.Run.SuiteName}}</h1>
+  <p class="sub">
+    target <code>{{.Run.Target}}</code> ·
+    run <code>{{.Run.ID}}</code>
+    {{if .Run.GitSHA}} · commit <code>{{short .Run.GitSHA}}</code>{{end}}
+  </p>
+  <p>
+    <span class="tag {{.Run.Status}}">{{.Run.Status}}</span>
+    <span class="muted">{{percent .Run.PassRate}} pass rate · {{.Run.CasesPassed}}/{{len .Cases}} cases</span>
+  </p>
+</header>
+
+{{if .Run.PolicyViolations}}
+<section class="violations">
+  <h2>Policy</h2>
+  <ul>{{range .Run.PolicyViolations}}<li>{{.}}</li>{{end}}</ul>
+</section>
+{{end}}
+
+{{range .Cases}}
+<section class="case">
+  <h2>
+    <span class="tag {{if .Passed}}passed{{else}}failed{{end}}">{{if .Passed}}pass{{else}}fail{{end}}</span>
+    {{.ID}}
+    <span class="muted">{{.PassedCount}}/{{len .Executions}} repetitions</span>
+  </h2>
+  {{if .Title}}<p class="muted">{{.Title}}</p>{{end}}
+
+  {{range .Executions}}
+  <details {{if not .Passed}}open{{end}}>
+    <summary>
+      repetition {{.RepetitionIndex}} —
+      {{if .Passed}}passed{{else}}failed{{end}}
+      <span class="muted">{{.Result.DurationMS}}ms</span>
+    </summary>
+    <table class="grades">
+      <tbody>
+      {{range .Grades}}
+        <tr>
+          <td><span class="tag {{if .Passed}}passed{{else}}failed{{end}}">{{if .Passed}}ok{{else}}no{{end}}</span></td>
+          <td><code>{{.Type}}</code></td>
+          <td>{{.Detail}}</td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+    {{if .Result.Error}}<pre class="err">{{.Result.Error.Class}}: {{.Result.Error.Message}}</pre>{{end}}
+    {{if .Result.FinalState}}<h3>final_state</h3><pre>{{pretty .Result.FinalState}}</pre>{{end}}
+    {{if .Result.Output}}<h3>output</h3><pre>{{pretty .Result.Output}}</pre>{{end}}
+  </details>
+  {{end}}
+</section>
+{{end}}
+</body>
+</html>{{end}}

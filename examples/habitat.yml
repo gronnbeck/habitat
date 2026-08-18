@@ -1,0 +1,8 @@
+# Project settings: where suites live, and how to launch the runner.
+#
+# The runner is a process in your own language. habitat starts it, hands it a
+# plan over HTTP, and grades what it reports back — it never calls your
+# application code itself.
+suites: evals/suites
+runner: ["ruby", "evals/runner.rb"]
+db: .habitat/habitat.db

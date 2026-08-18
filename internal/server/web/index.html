@@ -1,0 +1,44 @@
+{{define "index.html"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>habitat</title>
+{{template "style.html"}}
+</head>
+<body>
+<header>
+  <h1>habitat</h1>
+  <p class="sub">Evaluation runs, newest first.</p>
+</header>
+
+{{if .Suites}}
+<nav class="filters">
+  <a class="chip {{if eq .Selected ""}}on{{end}}" href="/">all suites</a>
+  {{range .Suites}}<a class="chip {{if eq $.Selected .}}on{{end}}" href="/?suite={{.}}">{{.}}</a>{{end}}
+</nav>
+{{end}}
+
+{{if .Runs}}
+<table>
+  <thead>
+    <tr><th>Run</th><th>Suite</th><th>Target</th><th>Pass rate</th><th>Status</th><th>Started</th></tr>
+  </thead>
+  <tbody>
+  {{range .Runs}}
+    <tr>
+      <td><a href="/runs/{{.ID}}"><code>{{short .ID}}</code></a></td>
+      <td>{{.SuiteName}}</td>
+      <td><code>{{.Target}}</code></td>
+      <td>{{percent .PassRate}}</td>
+      <td><span class="tag {{.Status}}">{{.Status}}</span></td>
+      <td class="muted">{{.StartedAt.Format "2006-01-02 15:04"}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="empty">No runs yet. Run <code>habitat run &lt;suite&gt;</code> to record one.</p>
+{{end}}
+</body>
+</html>{{end}}
