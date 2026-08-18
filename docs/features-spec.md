@@ -46,6 +46,25 @@ default shape.
 | `required_tool` / `forbidden_tool` / `maximum_tool_calls` | Trace-based checks over `events` — for targets that call tools. | Phase 2 |
 | `rubric` | A configured model judge scores the output against `criteria`, and a suite-author-set `threshold` (not the judge's own opinion) decides pass/fail. Fails cleanly, not the whole run, if no judge is configured. | Phase 2 |
 
+### Choosing what a grader reads — `source`
+
+`exact_match`, `includes` and `json_schema` read the execution's `output` by
+default, and `state_match` reads `final_state`. An agent whose answer is
+prose keeps its gradeable structure in `final_state`, so those three also
+accept `source: final_state` to point at it — otherwise such a target would
+have to duplicate its structured state into its prose just to be assertable.
+The default stays `output`, and an unrecognised `source` is a load-time
+error.
+
+```yaml
+- type: json_schema
+  source: final_state
+  path: action_types
+  schema:
+    type: array
+    contains: { type: string, const: add_exercise }
+```
+
 An unsupported or misspelled grader key or option raises a validation error
 at suite-load time — a check the author believes they configured is exactly
 the failure mode this guards against.

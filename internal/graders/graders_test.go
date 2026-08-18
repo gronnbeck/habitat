@@ -112,6 +112,42 @@ func TestJSONSchemaContainsAndNot(t *testing.T) {
 	}
 }
 
+func TestSourceSelectsFinalState(t *testing.T) {
+	// An agent whose answer is prose keeps its structured fields in
+	// final_state. Without `source`, a schema check could only read the prose,
+	// forcing every such target to duplicate its state into the output.
+	res := &protocol.Result{
+		Output:     "I've proposed adding face pulls.",
+		FinalState: map[string]any{"action_types": []any{"add_exercise", "add_set"}},
+	}
+	opts := Options{
+		"source": "final_state",
+		"path":   "action_types",
+		"schema": map[string]any{
+			"type":     "array",
+			"contains": map[string]any{"type": "string", "const": "add_exercise"},
+		},
+	}
+	if got := Grade("json_schema", res, opts); !got.Passed {
+		t.Fatalf("expected final_state to be readable by schema, got %q", got.Detail)
+	}
+	// The default must stay the output, so existing suites keep their meaning.
+	delete(opts, "source")
+	if Grade("json_schema", res, opts).Passed {
+		t.Fatal("without source, the grader must read output, not final_state")
+	}
+}
+
+func TestSourceIsValidatedAtLoadTime(t *testing.T) {
+	err := Validate("includes", Options{"value": "x", "source": "finalstate"})
+	if err == nil {
+		t.Fatal("a misspelled source must be rejected at load time")
+	}
+	if err := Validate("includes", Options{"value": "x", "source": "final_state"}); err != nil {
+		t.Fatalf("a valid source must be accepted: %v", err)
+	}
+}
+
 func TestJSONSchemaRejectsUnsupportedKeyword(t *testing.T) {
 	// A keyword nobody implements would silently check nothing, which is the
 	// exact failure this guards against.

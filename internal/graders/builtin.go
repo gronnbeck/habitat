@@ -33,23 +33,28 @@ func exactMatch() Grader {
 	return Grader{
 		Name: "exact_match",
 		Validate: func(o Options) error {
-			if err := o.allow("value", "path"); err != nil {
+			if err := o.allow("value", "path", "source"); err != nil {
+				return err
+			}
+			if err := o.validateSource(); err != nil {
 				return err
 			}
 			return o.requirePresent("value")
 		},
 		Grade: func(res *protocol.Result, o Options) Outcome {
 			path, _ := o.str("path")
-			actual, found := lookupPath(res.Output, path)
+			root, source := rootFor(res, o)
+			actual, found := lookupPath(root, path)
 			if !found {
-				return Outcome{Detail: fmt.Sprintf("no value at output path %q", path)}
+				return Outcome{Detail: fmt.Sprintf("no value at %s", pathLabel(source, path))}
 			}
 			expected := o["value"]
+			label := pathLabel(source, path)
 			if equalValues(expected, actual) {
-				return Outcome{Passed: true, Detail: fmt.Sprintf("%s == %s", pathLabel(path), describe(actual))}
+				return Outcome{Passed: true, Detail: fmt.Sprintf("%s == %s", label, describe(actual))}
 			}
 			return Outcome{Detail: fmt.Sprintf("%s: expected %s, got %s",
-				pathLabel(path), describe(expected), describe(actual))}
+				label, describe(expected), describe(actual))}
 		},
 	}
 }
@@ -85,25 +90,29 @@ func includes() Grader {
 	return Grader{
 		Name: "includes",
 		Validate: func(o Options) error {
-			if err := o.allow("value", "path"); err != nil {
+			if err := o.allow("value", "path", "source"); err != nil {
+				return err
+			}
+			if err := o.validateSource(); err != nil {
 				return err
 			}
 			return o.requirePresent("value")
 		},
 		Grade: func(res *protocol.Result, o Options) Outcome {
 			path, _ := o.str("path")
-			actual, found := lookupPath(res.Output, path)
+			root, source := rootFor(res, o)
+			actual, found := lookupPath(root, path)
 			if !found {
-				return Outcome{Detail: fmt.Sprintf("no value at output path %q", path)}
+				return Outcome{Detail: fmt.Sprintf("no value at %s", pathLabel(source, path))}
 			}
-			return includesOutcome(actual, o["value"], path)
+			return includesOutcome(actual, o["value"], pathLabel(source, path))
 		},
 	}
 }
 
 // includesOutcome is substring containment for strings and membership for
 // arrays — the two things "includes" can sensibly mean.
-func includesOutcome(actual, expected any, path string) Outcome {
+func includesOutcome(actual, expected any, label string) Outcome {
 	switch container := actual.(type) {
 	case string:
 		needle, ok := expected.(string)
@@ -111,18 +120,18 @@ func includesOutcome(actual, expected any, path string) Outcome {
 			return Outcome{Detail: "value must be a string to search a string"}
 		}
 		if strings.Contains(container, needle) {
-			return Outcome{Passed: true, Detail: fmt.Sprintf("%s contains %s", pathLabel(path), describe(needle))}
+			return Outcome{Passed: true, Detail: fmt.Sprintf("%s contains %s", label, describe(needle))}
 		}
-		return Outcome{Detail: fmt.Sprintf("%s does not contain %s", pathLabel(path), describe(needle))}
+		return Outcome{Detail: fmt.Sprintf("%s does not contain %s", label, describe(needle))}
 	case []any:
 		for _, item := range container {
 			if equalValues(expected, item) {
-				return Outcome{Passed: true, Detail: fmt.Sprintf("%s includes %s", pathLabel(path), describe(expected))}
+				return Outcome{Passed: true, Detail: fmt.Sprintf("%s includes %s", label, describe(expected))}
 			}
 		}
-		return Outcome{Detail: fmt.Sprintf("%s does not include %s", pathLabel(path), describe(expected))}
+		return Outcome{Detail: fmt.Sprintf("%s does not include %s", label, describe(expected))}
 	default:
-		return Outcome{Detail: fmt.Sprintf("%s is neither a string nor an array", pathLabel(path))}
+		return Outcome{Detail: fmt.Sprintf("%s is neither a string nor an array", label)}
 	}
 }
 
@@ -171,11 +180,38 @@ func maximumCost() Grader {
 	}
 }
 
-func pathLabel(path string) string {
-	if path == "" {
-		return "output"
+// sourceOutput and sourceFinalState name the two places a grader can read
+// from. Content-shaped graders default to the output, which is the agent's
+// answer; pointing one at final_state lets a schema assert on structured
+// fields without a target having to duplicate them into its prose.
+const (
+	sourceOutput     = "output"
+	sourceFinalState = "final_state"
+)
+
+// rootFor picks the value a path is resolved against, and the label to use
+// when describing it.
+func rootFor(res *protocol.Result, o Options) (any, string) {
+	if name, _ := o.str("source"); name == sourceFinalState {
+		return anyMap(res.FinalState), sourceFinalState
 	}
-	return "output." + path
+	return res.Output, sourceOutput
+}
+
+// validateSource rejects a source nobody implements, at load time.
+func (o Options) validateSource() error {
+	name, present := o.str("source")
+	if !present || name == sourceOutput || name == sourceFinalState {
+		return nil
+	}
+	return fmt.Errorf("option %q must be %q or %q", "source", sourceOutput, sourceFinalState)
+}
+
+func pathLabel(source, path string) string {
+	if path == "" {
+		return source
+	}
+	return source + "." + path
 }
 
 func anyMap(m map[string]any) any {

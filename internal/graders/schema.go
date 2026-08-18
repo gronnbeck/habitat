@@ -25,7 +25,10 @@ func init() {
 	Register(Grader{
 		Name: "json_schema",
 		Validate: func(o Options) error {
-			if err := o.allow("schema", "path"); err != nil {
+			if err := o.allow("schema", "path", "source"); err != nil {
+				return err
+			}
+			if err := o.validateSource(); err != nil {
 				return err
 			}
 			schema, ok := normalise(o["schema"]).(map[string]any)
@@ -40,14 +43,16 @@ func init() {
 
 func gradeSchema(res *protocol.Result, o Options) Outcome {
 	path, _ := o.str("path")
-	actual, found := lookupPath(res.Output, path)
+	root, source := rootFor(res, o)
+	label := pathLabel(source, path)
+	actual, found := lookupPath(root, path)
 	if !found {
-		return Outcome{Detail: fmt.Sprintf("no value at output path %q", path)}
+		return Outcome{Detail: fmt.Sprintf("no value at %s", label)}
 	}
 	schema, _ := normalise(o["schema"]).(map[string]any)
-	failures := checkValue(normalise(actual), schema, pathLabel(path))
+	failures := checkValue(normalise(actual), schema, label)
 	if len(failures) == 0 {
-		return Outcome{Passed: true, Detail: pathLabel(path) + " matches schema"}
+		return Outcome{Passed: true, Detail: label + " matches schema"}
 	}
 	return Outcome{Detail: strings.Join(failures, "; ")}
 }
