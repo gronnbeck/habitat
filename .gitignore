@@ -1,0 +1,11 @@
+# Build output
+/habitat
+/bin/
+
+# Local run store
+.habitat/
+*.db
+
+# Go
+*.test
+*.out

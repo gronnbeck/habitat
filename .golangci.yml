@@ -1,0 +1,47 @@
+# Readability budget for this repository, on top of golangci-lint's standard
+# correctness set (errcheck, govet, ineffassign, staticcheck, unused).
+#
+# The numbers below are the knobs worth turning. They are set where a reader
+# starts to struggle rather than where the current code happens to sit, so
+# tightening one should mean fixing code rather than editing this file. Run
+# them with ./lint.sh, which also checks file length — golangci-lint has no
+# linter for that.
+version: "2"
+
+# govet and ineffassign are not listed below: they are part of golangci-lint's
+# default set and already run, along with errcheck, staticcheck, and unused.
+linters:
+  enable:
+    - funlen # how long a single function may get
+    - gocyclo # branch count: how many paths through a function
+    - gocognit # nesting-weighted complexity: how hard it is to hold in your head
+    - lll # line length
+    - maintidx # maintainability index: length and complexity rolled together
+    - dupl # copy-pasted blocks
+    - gocritic # bugs, performance, and style the compiler does not catch
+
+  settings:
+    lll:
+      # Go has no conventional limit and gofmt never wraps, so this is only
+      # meant to catch lines that have genuinely stopped being readable.
+      line-length: 120
+
+    funlen:
+      lines: 60
+      statements: 40
+      ignore-comments: true # a well-commented function should not be penalised
+
+    gocyclo:
+      # golangci-lint defaults this to 30, which almost nothing ever trips.
+      min-complexity: 15
+
+    gocognit:
+      # Counts nesting depth, so it catches the switch-inside-switch shape
+      # that gocyclo scores the same as a flat one.
+      min-complexity: 20
+
+  exclusions:
+    rules:
+      # Table-driven tests are long by nature, and their fixtures are data.
+      - path: _test\.go
+        linters: [funlen, lll]

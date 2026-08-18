@@ -26,6 +26,25 @@ the concrete feature set and phasing, and
 - `examples/suites/` — example suite YAML used in the docs and for
   dogfooding.
 
+## Linting
+
+`./lint.sh` is the check — not bare `golangci-lint run`. It runs
+golangci-lint against [`.golangci.yml`](.golangci.yml) and adds a whole-file
+length limit (600 lines, tests exempt), which golangci-lint has no linter
+for: every length rule it ships measures a function or a single line.
+`./lint.sh --fix` applies what the linters can fix themselves.
+
+`.golangci.yml` is a readability budget on top of golangci-lint's default
+correctness set. Its thresholds are set where a reader starts to struggle
+rather than where the code happens to sit, so tightening one should mean
+fixing code rather than editing the file. Both files are the standard shared
+across these Go projects — keep changes to the shared `linters`/`settings`
+blocks in sync rather than letting this repo drift; `exclusions.rules` is the
+part that is legitimately repo-specific.
+
+Note that golangci-lint reports only one issue per line by default, so a
+second linter firing on the same line stays hidden until the first is fixed.
+
 ## Dev process
 
 No CI exists yet. Once it does, the rule carried over from other repos
