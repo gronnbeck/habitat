@@ -27,6 +27,20 @@ fi
 
 golangci-lint run "$@" || fail=1
 
+# gofmt is not part of golangci-lint's default set, so without this the linter
+# passes locally on files CI then rejects. Same check CI runs.
+unformatted=$(gofmt -l .)
+if [ -n "$unformatted" ]; then
+    if [ "${1:-}" = "--fix" ]; then
+        gofmt -w .
+        echo "reformatted:"
+        echo "$unformatted"
+    else
+        printf '%s:1:1: file is not gofmt-ed (run ./lint.sh --fix)\n' $unformatted
+        fail=1
+    fi
+fi
+
 # File length. Tests are exempt: a table-driven test grows with its table,
 # and splitting one across files makes it harder to read, not easier.
 while IFS= read -r f; do

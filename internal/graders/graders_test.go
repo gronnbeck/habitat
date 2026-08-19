@@ -90,7 +90,7 @@ func TestJSONSchemaContainsAndNot(t *testing.T) {
 		map[string]any{"title": "something else"},
 	}}
 	present := Options{"schema": map[string]any{
-		"type":     "array",
+		"type": "array",
 		"contains": map[string]any{"type": "object", "properties": map[string]any{
 			"title": map[string]any{"type": "string", "pattern": "(?i)hvitvasking"},
 		}},

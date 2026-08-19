@@ -19,14 +19,14 @@ type Suite struct {
 
 // Case is one input paired with the expectations its result must satisfy.
 type Case struct {
-	ID          string         `yaml:"id"`
-	Title       string         `yaml:"title"`
-	Description string         `yaml:"description"`
-	Critical    bool           `yaml:"critical"`
-	Tags        []string       `yaml:"tags"`
-	Input       map[string]any `yaml:"input"`
-	Repetitions *int           `yaml:"repetitions"`
-	Expectations []Expectation `yaml:"expectations"`
+	ID           string         `yaml:"id"`
+	Title        string         `yaml:"title"`
+	Description  string         `yaml:"description"`
+	Critical     bool           `yaml:"critical"`
+	Tags         []string       `yaml:"tags"`
+	Input        map[string]any `yaml:"input"`
+	Repetitions  *int           `yaml:"repetitions"`
+	Expectations []Expectation  `yaml:"expectations"`
 }
 
 // Policy is the suite-level pass/fail rules layered on top of case results.
