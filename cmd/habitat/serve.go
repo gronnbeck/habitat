@@ -63,29 +63,31 @@ func serve(dbPath, addr string) int {
 	// binding beyond loopback with nobody able to log in can only be an
 	// accident, and the failure mode is publishing everyone's prompts.
 	loopback := server.IsLoopback(addr)
-	if err := bootstrapUser(db); err != nil {
-		return frameworkFail("%v", err)
-	}
+	signupToken := os.Getenv("HABITAT_SIGNUP_TOKEN")
 	users, err := db.CountUsers()
 	if err != nil {
 		return frameworkFail("counting users: %v", err)
 	}
-	if !loopback && users == 0 {
+	// Nobody can sign in and nobody can sign up: the server would be a wall
+	// with no door, and starting anyway risks it being a door with no wall.
+	if !loopback && users == 0 && signupToken == "" {
 		fmt.Fprintf(os.Stderr,
-			"habitat: refusing to serve %s with no accounts — anyone could read every run.\n"+
-				"Create one first:\n  habitat admin create-user <email> --db %s\n", addr, dbPath)
+			"habitat: refusing to serve %s with no accounts and no signup token.\n"+
+				"Set HABITAT_SIGNUP_TOKEN so an account can be created at /signup,\n"+
+				"or create one directly:\n  habitat admin create-user <email> --db %s\n", addr, dbPath)
 		return exitInvalid
 	}
 
 	srv, err := server.New(db, server.Config{
 		RequireAuth:   !loopback,
 		SecureCookies: os.Getenv("HABITAT_INSECURE_COOKIES") == "",
+		SignupToken:   signupToken,
 	})
 	if err != nil {
 		return frameworkFail("building server: %v", err)
 	}
 
-	describe(dbPath, addr, loopback)
+	describe(dbPath, addr, loopback, signupToken != "")
 	httpServer := &http.Server{
 		Addr:              addr,
 		Handler:           srv.Handler(),
@@ -97,39 +99,13 @@ func serve(dbPath, addr string) int {
 	return exitPassed
 }
 
-// bootstrapUser creates the first account from the environment, and only when
-// there are none.
-//
-// Without it a first deploy cannot succeed: the server refuses to serve with
-// no accounts, so its health check fails, so the deploy rolls back before
-// anyone can create one. This breaks that cycle without weakening the rule —
-// the server still never serves data to an anonymous stranger.
-func bootstrapUser(db *store.Store) error {
-	email := os.Getenv("HABITAT_BOOTSTRAP_EMAIL")
-	password := os.Getenv("HABITAT_BOOTSTRAP_PASSWORD")
-	if email == "" || password == "" {
-		return nil
-	}
-	users, err := db.CountUsers()
-	if err != nil {
-		return err
-	}
-	// Only ever the first account. Otherwise leaving the variable set would
-	// silently recreate an account someone had deliberately removed.
-	if users > 0 {
-		return nil
-	}
-	if _, err := db.CreateUser(email, password); err != nil {
-		return fmt.Errorf("creating the bootstrap account: %w", err)
-	}
-	fmt.Printf("created the first account for %s from HABITAT_BOOTSTRAP_EMAIL\n", email)
-	return nil
-}
-
-func describe(dbPath, addr string, loopback bool) {
+func describe(dbPath, addr string, loopback, signupOpen bool) {
 	mode := "authenticated"
 	if loopback {
 		mode = "open (loopback only)"
+	}
+	if signupOpen {
+		mode += ", signup enabled at /signup"
 	}
 	fmt.Printf("habitat serving %s on http://%s — %s\n", dbPath, addr, mode)
 }

@@ -32,11 +32,10 @@ registry:
 
 env:
   secret:
-    # Only used to create the very first account, on a database that has none.
-    # Ignored once anyone exists, so leaving it set cannot resurrect a deleted
-    # account.
-    - HABITAT_BOOTSTRAP_EMAIL
-    - HABITAT_BOOTSTRAP_PASSWORD
+    # Opens /signup to anyone holding it: how the first account is created on a
+    # fresh server, and how colleagues are invited afterwards. Remove it to
+    # close signups; existing accounts keep working.
+    - HABITAT_SIGNUP_TOKEN
   clear:
     PORT: "7878"
     # On the volume below, so a deploy never discards the run history.

@@ -145,9 +145,13 @@ happens locally and the server stores the verdict — it never re-grades — so 
 run reads the same in both places, and **a failed push never changes the exit
 code**: an unreachable server is not a failing evaluation.
 
+The first account is created through `/signup` using the server's
+`HABITAT_SIGNUP_TOKEN` — which is also how you invite colleagues. Unset the
+token to close signups; existing accounts keep working.
+
 ```bash
-habitat admin create-project "Chikara"    # prints the token once
-habitat admin create-user ken@example.com
+habitat admin create-project "Chikara"    # prints the project token once
+habitat admin create-user ken@example.com # or create an account directly
 ```
 
 Two rules the server enforces: it **refuses to start unauthenticated off

@@ -21,6 +21,9 @@
 
   <input type="hidden" name="next" value="{{.Next}}">
   <button type="submit">Sign in</button>
+  {{if .SignupOpen}}
+  <p class="hint centre"><a href="/signup">Create an account</a></p>
+  {{end}}
 </form>
 </body>
 </html>{{end}}

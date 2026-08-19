@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"net/http"
 	"time"
@@ -71,6 +72,11 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	s.startSession(w, r, user, r.PostFormValue("next"))
+}
+
+// startSession issues the cookie and sends someone on their way.
+func (s *Server) startSession(w http.ResponseWriter, r *http.Request, user store.User, next string) {
 	token, err := s.store.CreateSession(user.ID)
 	if err != nil {
 		s.fail(w, err)
@@ -85,11 +91,70 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 		Expires:  time.Now().Add(store.SessionLifetime),
 	})
-	next := r.PostFormValue("next")
 	if next == "" || !isLocalPath(next) {
 		next = "/"
 	}
 	http.Redirect(w, r, next, http.StatusSeeOther)
+}
+
+func (s *Server) handleSignupForm(w http.ResponseWriter, r *http.Request) {
+	if !s.cfg.SignupOpen() {
+		http.NotFound(w, r)
+		return
+	}
+	s.render(w, r, "signup.html", nil)
+}
+
+// handleSignup registers an account for anyone holding the signup token.
+//
+// The token is the whole gate, so it is compared in constant time and the
+// failure message never distinguishes a wrong token from a taken address —
+// otherwise the form would answer questions about the server for free.
+func (s *Server) handleSignup(w http.ResponseWriter, r *http.Request) {
+	if !s.cfg.SignupOpen() {
+		http.NotFound(w, r)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	if !s.tokenMatches(r.PostFormValue("token")) {
+		s.signupFailed(w, r, "That signup token isn't right.")
+		return
+	}
+
+	email := r.PostFormValue("email")
+	password := r.PostFormValue("password")
+	if len(password) < 12 {
+		s.signupFailed(w, r, "Passwords need to be at least 12 characters.")
+		return
+	}
+	user, err := s.store.CreateUser(email, password)
+	if err != nil {
+		s.signupFailed(w, r, "That email can't be used. It may already have an account.")
+		return
+	}
+	s.startSession(w, r, user, "/")
+}
+
+func (s *Server) tokenMatches(given string) bool {
+	want := []byte(s.cfg.SignupToken)
+	got := []byte(given)
+	// Compare in constant time, and only when the lengths match — otherwise
+	// ConstantTimeCompare returns early and leaks length through timing.
+	if len(want) != len(got) {
+		return false
+	}
+	return subtle.ConstantTimeCompare(want, got) == 1
+}
+
+func (s *Server) signupFailed(w http.ResponseWriter, r *http.Request, message string) {
+	w.WriteHeader(http.StatusUnauthorized)
+	s.render(w, r, "signup.html", map[string]any{
+		"Error": message,
+		"Email": r.PostFormValue("email"),
+	})
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {

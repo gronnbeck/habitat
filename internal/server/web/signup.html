@@ -1,0 +1,31 @@
+{{define "signup.html"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create an account — habitat</title>
+{{template "style.html"}}
+</head>
+<body class="centred">
+<form class="card" method="post" action="/signup">
+  <h1>habitat</h1>
+  <p class="sub">Create an account with the signup token for this server.</p>
+
+  {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+
+  <label for="token">Signup token</label>
+  <input id="token" name="token" type="password" autocomplete="off" required autofocus>
+
+  <label for="email">Email</label>
+  <input id="email" name="email" type="email" autocomplete="username" value="{{.Email}}" required>
+
+  <label for="password">Password</label>
+  <input id="password" name="password" type="password" autocomplete="new-password"
+         minlength="12" required>
+  <p class="hint">At least 12 characters.</p>
+
+  <button type="submit">Create account</button>
+  <p class="hint centre"><a href="/login">Already have an account?</a></p>
+</form>
+</body>
+</html>{{end}}

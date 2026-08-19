@@ -19,6 +19,26 @@ func TestIsLoopback(t *testing.T) {
 	}
 }
 
+func TestSignupTokenMatching(t *testing.T) {
+	// The token is the entire gate on account creation, so near-misses must
+	// not pass — particularly a prefix, which a naive comparison could allow.
+	s := &Server{cfg: Config{SignupToken: "s3cret-token"}}
+	if !s.tokenMatches("s3cret-token") {
+		t.Fatal("the exact token must match")
+	}
+	for _, wrong := range []string{"", "s3cret", "s3cret-token ", "S3CRET-TOKEN", "s3cret-token-extra"} {
+		if s.tokenMatches(wrong) {
+			t.Errorf("%q must not match", wrong)
+		}
+	}
+	// With no token configured, signup is closed — an empty submission must
+	// not be treated as a match against an empty secret.
+	closed := &Server{cfg: Config{}}
+	if closed.cfg.SignupOpen() {
+		t.Fatal("signup must be closed when no token is set")
+	}
+}
+
 func TestIsLocalPath(t *testing.T) {
 	// The post-login redirect comes from a query parameter, so it must not be
 	// usable to bounce someone to another site.

@@ -297,6 +297,11 @@ habitat admin list-projects
 habitat admin create-user ken@example.com
 ```
 
+People sign up themselves at `/signup` using the server's
+`HABITAT_SIGNUP_TOKEN`: that is how the first account is made on a fresh
+server, and how colleagues are invited. Unset the token and `/signup` 404s —
+existing accounts keep working.
+
 Run these against the server's own database (`--db`). On a Kamal-deployed
 server that means inside the container — `kamal new-project`, `kamal new-user`
 and `kamal projects` are wired up as aliases for exactly that.
@@ -304,9 +309,9 @@ and `kamal projects` are wired up as aliases for exactly that.
 ### Two rules the server enforces
 
 - **It refuses to start unauthenticated on a non-loopback address.** Binding
-  beyond `127.0.0.1` with no accounts exits 2 rather than publishing every
-  stored prompt and model output. On loopback it runs open, so local use needs
-  no account.
+  beyond `127.0.0.1` with no accounts *and* no signup token exits 2, rather
+  than publishing every stored prompt and model output. On loopback it runs
+  open, so local use needs no account.
 - **Runs are scoped to their project.** A run id from another project is a 404,
   not a readable report, so guessing an id gets you nothing.
 

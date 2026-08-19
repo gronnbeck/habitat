@@ -30,7 +30,14 @@ type Config struct {
 	RequireAuth bool
 	// SecureCookies marks the session cookie Secure. On behind TLS.
 	SecureCookies bool
+	// SignupToken, when set, opens /signup to anyone holding it. It is how the
+	// first account is created on a fresh server, and how colleagues are
+	// invited afterwards. Empty means signup is closed.
+	SignupToken string
 }
+
+// SignupOpen reports whether anyone can register with the token.
+func (c Config) SignupOpen() bool { return c.SignupToken != "" }
 
 // Server serves the dashboard, the reports, and the ingest API.
 type Server struct {
@@ -100,6 +107,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /login", s.handleLoginForm)
 	mux.HandleFunc("POST /login", s.handleLogin)
 	mux.HandleFunc("POST /logout", s.handleLogout)
+	mux.HandleFunc("GET /signup", s.handleSignupForm)
+	mux.HandleFunc("POST /signup", s.handleSignup)
 
 	// Machine ingest: a project token, never a session.
 	mux.HandleFunc("POST /"+protocol.Version+"/runs", s.handleIngest)
@@ -203,6 +212,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, dat
 	}
 	data["User"] = userFrom(r.Context())
 	data["RequireAuth"] = s.cfg.RequireAuth
+	data["SignupOpen"] = s.cfg.SignupOpen()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := s.templates.ExecuteTemplate(w, name, data); err != nil {
 		s.fail(w, err)

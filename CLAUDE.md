@@ -51,9 +51,11 @@ shape everywhere.
 Two invariants worth not breaking:
 
 - **It refuses to start unauthenticated off loopback** (`cmd/habitat/serve.go`).
-  Binding beyond `127.0.0.1` with no accounts exits 2. A flag could be set
-  wrongly; refusing cannot. The failure this prevents is publishing every
-  stored prompt and model output.
+  Binding beyond `127.0.0.1` with no accounts *and* no `HABITAT_SIGNUP_TOKEN`
+  exits 2 — a wall with no door, or worse a door with no wall. A flag could be
+  set wrongly; refusing cannot. The failure this prevents is publishing every
+  stored prompt and model output. With a signup token set, `/signup` is the
+  only extra route open to strangers; every data page still needs a session.
 - **Grading never happens server-side.** The CLI grades, then pushes the
   verdict. One implementation of grading means a run reads the same in the
   terminal and the browser, and a server outage cannot change whether a suite
@@ -86,12 +88,17 @@ second linter firing on the same line stays hidden until the first is fixed.
 
 ## Dev process
 
-No CI exists yet. Once it does, the rule carried over from other repos
-here applies: **a push isn't done until CI is** — watch the run to
-completion (`gh run list --commit <full SHA> --json status,conclusion`)
-rather than assuming it passed, and read a red run before re-running it.
-Use the full SHA; a short one silently matches nothing and the wait exits
-immediately, which looks like a pass.
+**A push isn't done until CI is** — watch the run to completion
+(`gh run list --commit <full SHA> --json status,conclusion`) rather than
+assuming it passed, and read a red run before re-running it. Use the full SHA;
+a short one silently matches nothing and the wait exits immediately, which
+looks like a pass.
+
+Pushing to `main` runs the engine tests and then **deploys to
+`habitat.np.lol`**, so a docs-only push still ships. The deploy job needs a
+self-hosted runner registered for this repo — runners are per-repo on that
+Mac, not shared, so without one the job queues indefinitely rather than
+failing.
 
 Commit messages are short, descriptive sentences in the imperative,
 describing the effect of the change — not a `type: subject` prefix. E.g.
