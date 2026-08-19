@@ -134,6 +134,10 @@ export HABITAT_TOKEN=hbt_…
 habitat run coach_chat
 ```
 
+Or keep the token in `.habitat.env` beside `habitat.yml` — habitat loads it
+automatically. Gitignore it; it holds a credential. Anything already set in
+the environment takes precedence, so overriding for one run still works.
+
 ```
   PASSED  (run ad054b99b29cd540)
 

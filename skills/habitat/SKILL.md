@@ -82,6 +82,7 @@ Other commands: `validate` and `list` take `--dir` only; `show` adds `--db` and
 
 ```
 habitat.yml                 # suites dir, runner command, db path
+.habitat.env                # optional: HABITAT_TOKEN (gitignore it)
 evals/
   suites/<name>.yml         # one suite per file
   runner.rb                 # declares targets, then hands off
@@ -274,6 +275,18 @@ server: https://habitat.np.lol
 export HABITAT_TOKEN=hbt_…        # per project, from `habitat admin create-project`
 habitat run coach_chat            # prints the report, then the URL it was filed under
 ```
+
+Or put it in **`.habitat.env`** next to `habitat.yml` and habitat loads it
+itself — **gitignore that file, it holds a credential**:
+
+```bash
+# .habitat.env
+HABITAT_TOKEN=hbt_…
+```
+
+A variable already set in the environment wins, so `HABITAT_TOKEN=x habitat
+run` still overrides the file for a one-off. It is deliberately not `.env`:
+an app usually has one of those already, full of its own secrets.
 
 ```
   PASSED  (run ad054b99b29cd540)

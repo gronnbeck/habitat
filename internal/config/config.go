@@ -43,8 +43,15 @@ type Config struct {
 // Load reads habitat.yml from dir, falling back to defaults when it is
 // absent. A malformed file is an error: silently defaulting would hide a typo
 // in the one file that says how to run anything.
+//
+// It also loads .habitat.env from the same directory into the process
+// environment — a deliberate side effect, so every command picks up the
+// project's token without each one remembering to ask.
 func Load(dir string) (Config, error) {
 	cfg := Config{Dir: dir}
+	if err := loadEnvFile(dir); err != nil {
+		return cfg, err
+	}
 	path := filepath.Join(dir, Filename)
 
 	data, err := os.ReadFile(path) // #nosec G304 -- operator's own project file

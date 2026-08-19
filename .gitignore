@@ -12,3 +12,6 @@
 
 # Kamal binstubs are not committed; CI uses `bundle exec kamal`.
 /bin/kamal
+
+# Per-project environment (holds HABITAT_TOKEN)
+.habitat.env

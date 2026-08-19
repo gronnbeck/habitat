@@ -67,6 +67,11 @@ the other repos here: `config/deploy.yml`, `.kamal/secrets` pulling from
 SQLite lives on the `habitat_data` volume, so a deploy never discards history.
 Ruby appears in this repo only to pin Kamal's version.
 
+`.habitat.env` beside `habitat.yml` is loaded into the environment by
+`config.Load` — a deliberate side effect, so every command picks up the
+project's token without each one remembering to ask. The environment wins over
+the file, and it is deliberately not `.env`, which usually belongs to the app.
+
 ## Linting
 
 `./lint.sh` is the check — not bare `golangci-lint run`. It runs
