@@ -26,6 +26,20 @@ the concrete feature set and phasing, and
 - `examples/suites/` — example suite YAML used in the docs and for
   dogfooding.
 
+## Installing it
+
+`./install.sh` installs both halves for the current user: the `habitat` binary
+via `go install`, and the `habitat` skill into `~/.claude/skills/`.
+`--skill-only` / `--bin-only` do one of them; `--link` symlinks the skill back
+to this repo so edits here take effect without reinstalling.
+
+`skills/habitat/SKILL.md` is the user-facing guide to the CLI — when to reach
+for habitat, the grader and policy reference, the SDK contract, and the cost
+discipline. It is documentation of the shipped behaviour, so **a change to the
+CLI's flags, graders, policy keys or exit codes means updating it in the same
+commit**. It is the thing most likely to drift silently, because nothing
+compiles it.
+
 ## Linting
 
 `./lint.sh` is the check — not bare `golangci-lint run`. It runs
