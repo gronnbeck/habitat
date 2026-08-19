@@ -15,6 +15,25 @@ func writeEnv(t *testing.T, body string) string {
 	return dir
 }
 
+// unset clears a variable for the duration of one test and puts back whatever
+// was there, so these tests cannot leak state into each other.
+func unset(t *testing.T, keys ...string) {
+	t.Helper()
+	for _, key := range keys {
+		previous, had := os.LookupEnv(key)
+		if err := os.Unsetenv(key); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if had {
+				_ = os.Setenv(key, previous)
+				return
+			}
+			_ = os.Unsetenv(key)
+		})
+	}
+}
+
 func TestLoadEnvFileReadsAssignments(t *testing.T) {
 	dir := writeEnv(t, `
 # the project's token
@@ -25,12 +44,7 @@ HABITAT_SINGLE='single'
 HABITAT_SPACED  =  spaced
 not an assignment
 `)
-	t.Setenv("HABITAT_TOKEN", "")
-	os.Unsetenv("HABITAT_TOKEN")
-	for _, key := range []string{"HABITAT_QUOTED", "HABITAT_SINGLE", "HABITAT_SPACED"} {
-		os.Unsetenv(key)
-		t.Cleanup(func() { os.Unsetenv(key) })
-	}
+	unset(t, "HABITAT_TOKEN", "HABITAT_QUOTED", "HABITAT_SINGLE", "HABITAT_SPACED")
 
 	if err := loadEnvFile(dir); err != nil {
 		t.Fatal(err)
@@ -77,8 +91,7 @@ func TestMalformedLineIsReported(t *testing.T) {
 
 func TestLoadPicksUpTheEnvFile(t *testing.T) {
 	dir := writeEnv(t, "HABITAT_TOKEN=via_load\n")
-	os.Unsetenv("HABITAT_TOKEN")
-	t.Cleanup(func() { os.Unsetenv("HABITAT_TOKEN") })
+	unset(t, "HABITAT_TOKEN")
 
 	if _, err := Load(dir); err != nil {
 		t.Fatal(err)
