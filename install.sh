@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs habitat for the current user:
 #
-#   1. the `habitat` binary, via `go install`
+#   1. the `habitat` binary, via `go install`, linked onto your PATH
 #   2. the `habitat` skill, into ~/.claude/skills/
 #
 # Usage:  ./install.sh              # both
@@ -38,6 +38,44 @@ done
 
 say() { printf '  %s\n' "$1"; }
 
+# go install's target directory is often not on PATH, and a binary you cannot
+# type the name of is not installed as far as anyone is concerned. Symlink it
+# into a directory that already is on PATH — a link rather than a copy, so a
+# later `go install` is picked up without reinstalling.
+put_on_path() {
+    binary="$1"
+
+    if [ "$(command -v habitat 2>/dev/null)" = "$binary" ]; then
+        say "habitat is on your PATH"
+        return 0
+    fi
+
+    for dir in "$HOME/.local/bin" "$HOME/bin" /usr/local/bin; do
+        case ":$PATH:" in *":$dir:"*) ;; *) continue ;; esac
+        [ -d "$dir" ] && [ -w "$dir" ] || continue
+
+        # Never quietly replace something that isn't ours.
+        if [ -e "$dir/habitat" ] && [ ! -L "$dir/habitat" ]; then
+            say "WARNING: $dir/habitat exists and is not a symlink — leaving it alone"
+            continue
+        fi
+
+        if [ -L "$dir/habitat" ] && [ "$(readlink "$dir/habitat")" = "$binary" ]; then
+            say "already on your PATH: $dir/habitat"
+            return 0
+        fi
+
+        ln -sf "$binary" "$dir/habitat"
+        say "linked $dir/habitat -> $binary"
+        return 0
+    done
+
+    say ""
+    say "WARNING: no writable directory on your PATH to link into."
+    say "Add the Go bin directory to your shell profile instead:"
+    say "  export PATH=\"$(dirname "$binary"):\$PATH\""
+}
+
 # ── binary ───────────────────────────────────────────────────────────────────
 if [ "$want_bin" = 1 ]; then
     echo "Installing the habitat binary"
@@ -49,14 +87,7 @@ if [ "$want_bin" = 1 ]; then
     GOBIN="$(go env GOBIN)"
     [ -n "$GOBIN" ] || GOBIN="$(go env GOPATH)/bin"
     say "installed $GOBIN/habitat"
-
-    # go install's target is not always on PATH, and a binary you can't run is
-    # not installed as far as the user is concerned.
-    if ! command -v habitat >/dev/null; then
-        say ""
-        say "WARNING: $GOBIN is not on your PATH. Add it:"
-        say "  export PATH=\"$GOBIN:\$PATH\""
-    fi
+    put_on_path "$GOBIN/habitat"
 fi
 
 # ── skill ────────────────────────────────────────────────────────────────────
