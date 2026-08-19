@@ -40,6 +40,31 @@ CLI's flags, graders, policy keys or exit codes means updating it in the same
 commit**. It is the thing most likely to drift silently, because nothing
 compiles it.
 
+## The server
+
+`habitat serve` is the same binary long-running. It is multi-tenant: a
+**project** owns its runs and holds the token a CLI authenticates with, while
+people sign in with an account to read reports. Local runs land in an implicit
+`local` project, so single-machine use needs no setup and the schema has one
+shape everywhere.
+
+Two invariants worth not breaking:
+
+- **It refuses to start unauthenticated off loopback** (`cmd/habitat/serve.go`).
+  Binding beyond `127.0.0.1` with no accounts exits 2. A flag could be set
+  wrongly; refusing cannot. The failure this prevents is publishing every
+  stored prompt and model output.
+- **Grading never happens server-side.** The CLI grades, then pushes the
+  verdict. One implementation of grading means a run reads the same in the
+  terminal and the browser, and a server outage cannot change whether a suite
+  passed — which is why a failed push warns but never changes the exit code.
+
+Deployed with Kamal to `habitat.np.lol` on `notnoise-1.server.np.lol`, matching
+the other repos here: `config/deploy.yml`, `.kamal/secrets` pulling from
+1Password, and a self-hosted native-ARM64 deploy job in `.github/workflows/ci.yml`.
+SQLite lives on the `habitat_data` volume, so a deploy never discards history.
+Ruby appears in this repo only to pin Kamal's version.
+
 ## Linting
 
 `./lint.sh` is the check — not bare `golangci-lint run`. It runs

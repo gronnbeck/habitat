@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Run.SuiteName}} — habitat</title>
+<title>{{.Run.SuiteName}} — {{.Project.Name}} — habitat</title>
 {{template "style.html"}}
 </head>
 <body>
+{{template "nav.html" .}}
 <header>
-  <p class="sub"><a href="/">&larr; all runs</a></p>
+  <p class="sub"><a href="/projects/{{.Project.Slug}}">&larr; {{.Project.Name}}</a></p>
   <h1>{{.Run.SuiteName}}</h1>
   <p class="sub">
     target <code>{{.Run.Target}}</code> ·

@@ -1,0 +1,26 @@
+{{define "login.html"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — habitat</title>
+{{template "style.html"}}
+</head>
+<body class="centred">
+<form class="card" method="post" action="/login">
+  <h1>habitat</h1>
+  <p class="sub">Evaluation runs contain prompts and model output, so they need a sign-in.</p>
+
+  {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+
+  <label for="email">Email</label>
+  <input id="email" name="email" type="email" autocomplete="username" required autofocus>
+
+  <label for="password">Password</label>
+  <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+  <input type="hidden" name="next" value="{{.Next}}">
+  <button type="submit">Sign in</button>
+</form>
+</body>
+</html>{{end}}

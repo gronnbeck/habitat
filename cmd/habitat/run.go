@@ -12,6 +12,7 @@ import (
 
 	"github.com/gronnbeck/habitat/internal/config"
 	"github.com/gronnbeck/habitat/internal/engine"
+	"github.com/gronnbeck/habitat/internal/push"
 	"github.com/gronnbeck/habitat/internal/report"
 	"github.com/gronnbeck/habitat/internal/result"
 	"github.com/gronnbeck/habitat/internal/store"
@@ -26,6 +27,8 @@ type runFlags struct {
 	repetitions int
 	timeout     time.Duration
 	noPersist   bool
+	server      string
+	noPush      bool
 }
 
 func cmdRun(args []string) int {
@@ -41,6 +44,8 @@ func cmdRun(args []string) int {
 	fs.IntVar(&opts.repetitions, "repetitions", 0, "override the suite's repetition count")
 	fs.DurationVar(&opts.timeout, "timeout", 30*time.Minute, "maximum wall-clock time for the run")
 	fs.BoolVar(&opts.noPersist, "no-persist", false, "do not write this run to the store")
+	fs.StringVar(&opts.server, "server", "", "habitat server to report this run to (overrides habitat.yml)")
+	fs.BoolVar(&opts.noPush, "no-push", false, "do not report this run to a server")
 	if err := fs.Parse(flags); err != nil {
 		return exitInvalid
 	}
@@ -89,6 +94,7 @@ func finishRun(cfg config.Config, run result.Run, runErr error, opts runFlags) i
 	if err := writeReport(run, opts); err != nil {
 		return frameworkFail("writing report: %v", err)
 	}
+	pushRun(cfg, run, opts)
 	if runErr != nil {
 		return exitFrameworkErr
 	}
@@ -96,6 +102,33 @@ func finishRun(cfg config.Config, run result.Run, runErr error, opts runFlags) i
 		return exitPassed
 	}
 	return exitFailed
+}
+
+// pushRun uploads the finished run to a configured server, after the terminal
+// report has already printed.
+//
+// A push failure is reported but never changes the exit code: the suite's
+// verdict was decided locally, and an unreachable server is not a failing
+// evaluation. Getting that backwards would make a network blip look like a
+// regression.
+func pushRun(cfg config.Config, run result.Run, opts runFlags) {
+	server := opts.server
+	if server == "" {
+		server = cfg.Server
+	}
+	if server == "" || opts.noPush || run.ID == "" {
+		return
+	}
+	stored, err := push.Run(server, os.Getenv("HABITAT_TOKEN"), run)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "habitat: could not push this run: %v\n", err)
+		return
+	}
+	if stored.URL != "" {
+		fmt.Printf("  reported to %s\n\n", stored.URL)
+		return
+	}
+	fmt.Printf("  reported to %s\n\n", server)
 }
 
 func persist(cfg config.Config, dbOverride string, run result.Run) error {

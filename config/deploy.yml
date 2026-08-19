@@ -1,0 +1,58 @@
+service: habitat
+
+image: gronnbeck88/habitat
+
+deploy_timeout: 60
+
+servers:
+  web:
+    hosts:
+      - notnoise-1.server.np.lol
+
+ssh:
+  user: root
+  keys: [ "~/.ssh/not_noise" ]
+
+proxy:
+  ssl: true
+  host: habitat.np.lol
+  # Kamal defaults app_port to 80, which suits a Rails image running Thruster.
+  # This is a Go server listening on PORT, so without this kamal-proxy health
+  # checks a closed port and every deploy times out with "target failed to
+  # become healthy" — even though the server booted fine.
+  app_port: 7878
+  healthcheck:
+    path: /up
+    interval: 5
+
+registry:
+  username: gronnbeck88
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+env:
+  secret:
+    # Only used to create the very first account, on a database that has none.
+    # Ignored once anyone exists, so leaving it set cannot resurrect a deleted
+    # account.
+    - HABITAT_BOOTSTRAP_EMAIL
+    - HABITAT_BOOTSTRAP_PASSWORD
+  clear:
+    PORT: "7878"
+    # On the volume below, so a deploy never discards the run history.
+    HABITAT_DB: /var/lib/habitat/habitat.db
+
+volumes:
+  - "habitat_data:/var/lib/habitat"
+
+aliases:
+  # Projects and accounts are created against the server's own database, which
+  # only exists inside the container.
+  projects: app exec --interactive --reuse "habitat admin list-projects --db /var/lib/habitat/habitat.db"
+  new-project: app exec --interactive "habitat admin create-project"
+  new-user: app exec --interactive "habitat admin create-user"
+  shell: app exec --interactive --reuse "sh"
+  logs: app logs -f
+
+builder:
+  arch: arm64

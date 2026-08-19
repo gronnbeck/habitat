@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Engine — Test & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache-dependency-path: go.sum
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt would change these files:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - run: go vet ./...
+      - run: go test ./...
+
+      # The readability budget, plus the whole-file length check golangci-lint
+      # has no linter for. See .golangci.yml and lint.sh.
+      - name: Lint
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+          ./lint.sh
+
+      # The binary is what people install, so a build break on a platform we
+      # tell them to use is a release break. Cheap to catch here.
+      - name: Cross-compile for every target we document
+        run: |
+          for target in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64; do
+            GOOS=${target%/*} GOARCH=${target#*/} go build -o /dev/null ./cmd/habitat
+            echo "  built $target"
+          done
+
+  deploy:
+    name: Server — Deploy (Kamal)
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [test]
+    runs-on: [self-hosted, macOS]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Kamal is the only Ruby in this repo; the Gemfile pins its version.
+      - name: Bundle install
+        run: bundle install
+
+      - name: Load secrets from 1Password
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          # The field name is pinned deliberately: an unqualified op:// reference
+          # returns the item's default field instead, which then fails several
+          # steps later as a generic SSH auth error.
+          SSH_PRIVATE_KEY: op://nplol/not-noise-key/private key
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/not_noise
+          chmod 600 ~/.ssh/not_noise
+          ssh-keyscan notnoise-1.server.np.lol >> ~/.ssh/known_hosts
+          ssh-keyscan "$(dig +short notnoise-1.server.np.lol | tail -1)" >> ~/.ssh/known_hosts
+
+      - name: Deploy with Kamal
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          # Docker Desktop's own credential helper ("desktop") hangs indefinitely
+          # when invoked from this runner's non-interactive session. Point at an
+          # isolated config dir with no credsStore configured -- same as the
+          # ubuntu-latest runner's default -- so docker/kamal store credentials
+          # as plain auth instead of shelling out to that helper.
+          DOCKER_CONFIG: ${{ runner.temp }}/docker-config
+        run: |
+          mkdir -p "$DOCKER_CONFIG"
+          ln -sf ~/.docker/cli-plugins "$DOCKER_CONFIG/cli-plugins"
+          bundle exec kamal deploy

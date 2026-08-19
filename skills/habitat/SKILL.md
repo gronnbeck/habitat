@@ -51,6 +51,7 @@ habitat list                    # suites found, with target and case count
 habitat run <suite>             # run it; costs money
 habitat show <run-id>           # print a persisted run
 habitat serve                   # browse run history at :7878
+habitat admin <command>         # manage a server's projects and accounts
 ```
 
 ### `run` flags
@@ -64,6 +65,8 @@ habitat serve                   # browse run history at :7878
 | `--dir=PATH` | Project directory holding `habitat.yml` (default `.`) |
 | `--db=PATH` | SQLite file (default `.habitat/habitat.db`) |
 | `--no-persist` | Don't record this run |
+| `--server=URL` | Report the run to a habitat server (overrides `habitat.yml`) |
+| `--no-push` | Don't report this run to a server |
 | `--timeout=30m` | Whole-run wall clock |
 
 Other commands: `validate` and `list` take `--dir` only; `show` adds `--db` and
@@ -255,6 +258,57 @@ ActiveRecord::Base.transaction do
   raise ActiveRecord::Rollback
 end
 ```
+
+## Reporting runs to a server
+
+A run always prints to the terminal and always records locally. When a server
+is configured it is *also* reported there, which is where the shareable HTML
+report lives.
+
+```yaml
+# habitat.yml — safe to commit; the token is never written here
+server: https://habitat.np.lol
+```
+
+```bash
+export HABITAT_TOKEN=hbt_…        # per project, from `habitat admin create-project`
+habitat run coach_chat            # prints the report, then the URL it was filed under
+```
+
+```
+  PASSED  (run ad054b99b29cd540)
+
+  reported to https://habitat.np.lol/projects/chikara/runs/ad054b99b29cd540
+```
+
+Grading happens locally and the server stores the verdict — it never re-grades.
+So a run reads identically in the terminal and the browser, and **a push
+failure never changes the exit code**: an unreachable server is not a failing
+evaluation. `--no-push` skips it entirely.
+
+### Server administration
+
+Projects are tenants. Each has a token that authenticates a CLI; people sign in
+with an account to read reports.
+
+```bash
+habitat admin create-project "Chikara"   # prints the token ONCE — it cannot be recovered
+habitat admin list-projects
+habitat admin create-user ken@example.com
+```
+
+Run these against the server's own database (`--db`). On a Kamal-deployed
+server that means inside the container — `kamal new-project`, `kamal new-user`
+and `kamal projects` are wired up as aliases for exactly that.
+
+### Two rules the server enforces
+
+- **It refuses to start unauthenticated on a non-loopback address.** Binding
+  beyond `127.0.0.1` with no accounts exits 2 rather than publishing every
+  stored prompt and model output. On loopback it runs open, so local use needs
+  no account.
+- **Runs are scoped to their project.** A run id from another project is a 404,
+  not a readable report, so guessing an id gets you nothing.
 
 ## Reading a run
 

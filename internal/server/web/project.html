@@ -1,0 +1,47 @@
+{{define "project.html"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Project.Name}} — habitat</title>
+{{template "style.html"}}
+</head>
+<body>
+{{template "nav.html" .}}
+<header>
+  <p class="sub"><a href="/">&larr; all projects</a></p>
+  <h1>{{.Project.Name}}</h1>
+  <p class="sub">Evaluation runs, newest first.</p>
+</header>
+
+{{if .Suites}}
+<nav class="filters">
+  <a class="chip {{if eq .Selected ""}}on{{end}}" href="/projects/{{.Project.Slug}}">all suites</a>
+  {{range .Suites}}
+    <a class="chip {{if eq $.Selected .}}on{{end}}"
+       href="/projects/{{$.Project.Slug}}?suite={{.}}">{{.}}</a>
+  {{end}}
+</nav>
+{{end}}
+
+{{if .Runs}}
+<table>
+  <thead><tr><th>Run</th><th>Suite</th><th>Target</th><th>Pass rate</th><th>Status</th><th>Started</th></tr></thead>
+  <tbody>
+  {{range .Runs}}
+    <tr>
+      <td><a href="/projects/{{$.Project.Slug}}/runs/{{.ID}}"><code>{{short .ID}}</code></a></td>
+      <td>{{.SuiteName}}</td>
+      <td><code>{{.Target}}</code></td>
+      <td>{{percent .PassRate}}</td>
+      <td><span class="tag {{.Status}}">{{.Status}}</span></td>
+      <td class="muted">{{.StartedAt.Format "2006-01-02 15:04"}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="empty">No runs yet for this project.</p>
+{{end}}
+</body>
+</html>{{end}}

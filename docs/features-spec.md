@@ -138,7 +138,8 @@ the CLI process, not a thing it shells out to separately.
 | `--format=terminal\|json` | Report format. Default `terminal`. | MVP |
 | `--output=PATH` | Write the report to a file instead of stdout. | MVP |
 | `--db=PATH` | SQLite file to persist into. Defaults to `.habitat/habitat.db`. | MVP |
-| `--push=URL` | After finalizing locally, also upload the finished run to a remote `habitat serve` instance — the CI path. | Phase 2 |
+| `--server=URL` | After finalizing locally, also report the finished run to a habitat server. | MVP |
+| `--no-push` | Never report this run to a server. | MVP |
 | `--baseline=RUN_ID\|PATH` | Compare against a previous run. | Phase 2 |
 | `--format=junit\|html` | Additional report formats. | Phase 2 |
 

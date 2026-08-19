@@ -29,6 +29,7 @@ Usage:
   habitat list [flags]                                list suites
   habitat show [flags] <run-id>                       print a persisted run
   habitat serve [flags]                               browse runs over HTTP
+  habitat admin <command>                             manage projects and accounts
 
 Run "habitat <command> --help" for a command's flags.
 `
@@ -53,6 +54,8 @@ func dispatch(command string, args []string) int {
 		return cmdShow(args)
 	case "serve":
 		return cmdServe(args)
+	case "admin":
+		return cmdAdmin(args)
 	case "help", "--help", "-h":
 		fmt.Print(usage)
 		return exitPassed
@@ -89,7 +92,7 @@ func splitFlags(args []string) (flags, positional []string) {
 func needsValue(flag string) bool {
 	name := strings.TrimLeft(flag, "-")
 	switch name {
-	case "json", "help", "h":
+	case "json", "help", "h", "no-persist", "no-push":
 		return false
 	default:
 		return true

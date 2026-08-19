@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite" // pure-Go driver: no cgo, so the binary stays static
@@ -49,6 +50,32 @@ CREATE TABLE IF NOT EXISTS run_cases (
   PRIMARY KEY (run_id, case_id)
 );
 
+-- Tenancy. A project owns its runs; its token is what a CLI authenticates with.
+-- Local runs land in an implicit "local" project, so single-machine use needs
+-- no setup and the schema has one shape everywhere.
+CREATE TABLE IF NOT EXISTS projects (
+  id         TEXT PRIMARY KEY,
+  slug       TEXT NOT NULL UNIQUE,
+  name       TEXT NOT NULL,
+  token_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id            TEXT PRIMARY KEY,
+  email         TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  created_at    TEXT NOT NULL
+);
+
+-- Only the hash is stored, so a stolen database yields no usable session.
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS executions (
   run_id           TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
   case_id          TEXT NOT NULL,
@@ -83,7 +110,26 @@ func Open(path string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("applying schema: %w", err)
 	}
+	if err := migrate(db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	return &Store{db: db}, nil
+}
+
+// migrate applies changes that CREATE TABLE IF NOT EXISTS cannot, for stores
+// written before a column existed. Each is idempotent: SQLite reports a
+// duplicate column rather than a generic error, which is the signal that this
+// migration has already run.
+func migrate(db *sql.DB) error {
+	for _, statement := range []string{
+		`ALTER TABLE runs ADD COLUMN project_id TEXT`,
+	} {
+		if _, err := db.Exec(statement); err != nil && !strings.Contains(err.Error(), "duplicate column") {
+			return fmt.Errorf("migrating: %w", err)
+		}
+	}
+	return nil
 }
 
 // Close releases the database handle.
@@ -91,14 +137,17 @@ func (s *Store) Close() error { return s.db.Close() }
 
 // SaveRun writes a finished run and everything under it in one transaction,
 // so a partially written run can never be browsed as if it were complete.
-func (s *Store) SaveRun(run result.Run) error {
+func (s *Store) SaveRun(run result.Run) error { return s.SaveRunFor(LocalProjectID, run) }
+
+// SaveRunFor writes a finished run under a project.
+func (s *Store) SaveRunFor(projectID string, run result.Run) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if err := insertRun(tx, run); err != nil {
+	if err := insertRun(tx, run, projectID); err != nil {
 		return err
 	}
 	for _, c := range run.Cases {
@@ -114,15 +163,15 @@ func (s *Store) SaveRun(run result.Run) error {
 	return tx.Commit()
 }
 
-func insertRun(tx *sql.Tx, run result.Run) error {
+func insertRun(tx *sql.Tx, run result.Run, projectID string) error {
 	_, err := tx.Exec(
 		`INSERT OR REPLACE INTO runs
 		 (id, suite_name, suite_path, target, digest, git_sha, started_at, finished_at,
-		  pass_rate, status, policy_violations)
-		 VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+		  pass_rate, status, policy_violations, project_id)
+		 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
 		run.ID, run.SuiteName, run.SuitePath, run.Target, run.Digest, run.GitSHA,
 		run.StartedAt.Format(time.RFC3339Nano), run.FinishedAt.Format(time.RFC3339Nano),
-		run.PassRate(), run.Status, encode(run.PolicyViolations),
+		run.PassRate(), run.Status, encode(run.PolicyViolations), projectID,
 	)
 	return err
 }

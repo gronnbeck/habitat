@@ -58,4 +58,45 @@ pre {
 }
 pre.err { color: var(--fail); }
 .empty { color: var(--muted); }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; padding: .6rem 0; margin-bottom: .5rem;
+  border-bottom: 1px solid var(--line);
+}
+.topbar form { display: flex; align-items: center; gap: .6rem; margin: 0; }
+.brand { font-weight: 700; text-decoration: none; letter-spacing: -.01em; }
+.linklike {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--muted); font: inherit; font-size: .875rem; text-decoration: underline;
+}
+
+body.centred {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 2rem 1.25rem;
+}
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 1.75rem; width: 100%; max-width: 22rem;
+}
+.card h1 { margin-bottom: .25rem; }
+.card label {
+  display: block; margin: 1rem 0 .3rem;
+  font-size: .8rem; font-weight: 600; color: var(--muted);
+}
+.card input {
+  width: 100%; padding: .55rem .65rem; font: inherit;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); border-radius: 7px;
+}
+.card button[type="submit"] {
+  width: 100%; margin-top: 1.25rem; padding: .6rem;
+  font: inherit; font-weight: 600; cursor: pointer;
+  background: var(--fg); color: var(--bg);
+  border: none; border-radius: 7px;
+}
+.error {
+  margin: .75rem 0 0; padding: .5rem .65rem; border-radius: 7px;
+  font-size: .875rem; color: var(--fail); border: 1px solid var(--fail);
+}
 </style>{{end}}

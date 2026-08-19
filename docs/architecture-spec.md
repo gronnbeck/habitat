@@ -60,9 +60,10 @@ grading engine and hope it stays in sync."
    every received execution against its case's `expectations`, evaluates
    the suite's `policy`, persists the finished run to SQLite, prints the
    report, and exits with the corresponding exit code.
-6. With `--push=URL` (Phase 2), the finished, already-graded run is also
-   uploaded to a remote `habitat serve` instance for shared visibility —
-   the CI path. Local grading never depends on a remote server being up.
+6. With a server configured (`server:` in habitat.yml, or `--server=URL`),
+   the finished, already-graded run is also reported to it for shared
+   visibility. Local grading never depends on a remote server being up, and a
+   failed push never changes the exit code.
 
 This is why "runner" and "engine" are one process: the Go binary that
 parses the suite, receives the pushed results, grades them, and persists
@@ -72,12 +73,22 @@ separate long-lived "runner engine" service to deploy for `run` to work.
 ### `habitat serve`
 
 The same binary, in long-running mode: an HTTP server over a SQLite file,
-serving the web dashboard (suite list, run history, run/case detail,
-comparisons) and exposing the same ingest API (`/v1/runs/import`) that a
-remote `--push` targets. No separate "server" codebase — it reuses the
-`internal/store`, `internal/report`, and `internal/policy` packages `run`
-already uses; the delta is an HTTP handler layer and templates instead of a
-terminal renderer.
+serving the web dashboard and the HTML report for a single run, and exposing
+the ingest API (`POST /v1/runs`) that `habitat run --server=…` pushes to.
+
+It is **multi-tenant**. A project owns its runs and holds the token a CLI
+authenticates with; people sign in with an account (bcrypt password, session
+cookie) to read reports. Local runs land in an implicit `local` project whose
+token hash is unmatchable, so nothing can write to them over the network.
+
+Two invariants: the server **refuses to start unauthenticated off loopback**
+(a flag can be set wrongly; refusing cannot), and runs are **scoped to their
+project**, so guessing a run id from another tenant yields a 404. Deployed
+with Kamal; SQLite sits on a volume so a deploy never discards history.
+
+There is no separate "server" codebase — it reuses the `internal/store`,
+`internal/report` and `internal/policy` packages `run` already uses; the delta
+is an HTTP handler layer and templates instead of a terminal renderer.
 
 ## Wire protocol
 
@@ -91,7 +102,7 @@ OpenAPI doc can follow once the shape stabilizes).
 | `GET /v1/executions` | SDK ← engine | The list of `{case_id, repetition_index, input}` this runner should execute. |
 | `POST /v1/executions/{case_id}/{repetition_index}` | SDK → engine | One execution's `Result`: `output`, `final_state`, `events`, `usage`, `duration_ms`, `error`. |
 | `POST /v1/complete` | SDK → engine | Signals the runner is done; optional, since the engine also detects subprocess exit. |
-| `POST /v1/runs/import` | remote push | A fully graded run payload (Phase 2), for `--push` and for a shared `habitat serve`. |
+| `POST /v1/runs` | remote push | A fully graded run, authenticated by a project token. The server stores the verdict and never re-grades. |
 | `GET /v1/suites`, `/v1/runs`, `/v1/runs/{id}` | dashboard ← store | Read APIs backing the web UI. |
 
 `Habitat::Result` (the only shape an SDK ever produces):

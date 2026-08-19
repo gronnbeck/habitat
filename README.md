@@ -118,6 +118,47 @@ Habitat.start
 gem "habitat-sdk", github: "gronnbeck/habitat", glob: "sdk/ruby/*.gemspec"
 ```
 
+## Reporting to a server
+
+`habitat serve` is the same binary long-running, and it is multi-tenant. A
+**project** owns its runs and holds the token a CLI authenticates with; people
+sign in with an account to read the reports.
+
+```yaml
+# habitat.yml — safe to commit; the token never lives here
+server: https://habitat.example.com
+```
+
+```bash
+export HABITAT_TOKEN=hbt_…
+habitat run coach_chat
+```
+
+```
+  PASSED  (run ad054b99b29cd540)
+
+  reported to https://habitat.example.com/projects/chikara/runs/ad054b99b29cd540
+```
+
+The run still prints to your terminal and still records locally. Grading
+happens locally and the server stores the verdict — it never re-grades — so a
+run reads the same in both places, and **a failed push never changes the exit
+code**: an unreachable server is not a failing evaluation.
+
+```bash
+habitat admin create-project "Chikara"    # prints the token once
+habitat admin create-user ken@example.com
+```
+
+Two rules the server enforces: it **refuses to start unauthenticated off
+loopback**, rather than trusting a flag not to publish your prompts and model
+output; and runs are **scoped to their project**, so a run id from elsewhere is
+a 404 rather than a readable report. On loopback it runs open, so local use
+needs no account.
+
+It deploys with Kamal — see `config/deploy.yml` and the `Dockerfile` (a 35 MB
+image; Ruby appears in this repo only to pin Kamal's version).
+
 ## Cost
 
 `validate`, `list`, `show` and `serve` are free — they never call a target.

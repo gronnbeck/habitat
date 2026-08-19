@@ -1,0 +1,39 @@
+{{define "projects.html"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>habitat</title>
+{{template "style.html"}}
+</head>
+<body>
+{{template "nav.html" .}}
+<header>
+  <h1>Projects</h1>
+  <p class="sub">Every project reporting evaluation runs here.</p>
+</header>
+
+{{if .Projects}}
+<table>
+  <thead><tr><th>Project</th><th>Latest run</th><th>Pass rate</th><th>Status</th><th>When</th></tr></thead>
+  <tbody>
+  {{range .Projects}}
+    <tr>
+      <td><a href="/projects/{{.Slug}}"><strong>{{.Name}}</strong></a></td>
+      {{if .Latest}}
+        <td>{{.Latest.SuiteName}}</td>
+        <td>{{percent .Latest.PassRate}}</td>
+        <td><span class="tag {{.Latest.Status}}">{{.Latest.Status}}</span></td>
+        <td class="muted">{{.Latest.StartedAt.Format "2006-01-02 15:04"}}</td>
+      {{else}}
+        <td class="muted" colspan="4">no runs yet</td>
+      {{end}}
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="empty">No projects yet. Create one with <code>habitat admin create-project &lt;name&gt;</code>.</p>
+{{end}}
+</body>
+</html>{{end}}

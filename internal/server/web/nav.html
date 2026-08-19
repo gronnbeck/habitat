@@ -1,0 +1,13 @@
+{{define "nav.html"}}
+{{if .RequireAuth}}
+<nav class="topbar">
+  <a class="brand" href="/">habitat</a>
+  {{if .User}}
+  <form method="post" action="/logout">
+    <span class="muted">{{.User.Email}}</span>
+    <button class="linklike" type="submit">sign out</button>
+  </form>
+  {{end}}
+</nav>
+{{end}}
+{{end}}

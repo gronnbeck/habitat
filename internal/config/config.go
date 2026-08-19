@@ -32,6 +32,10 @@ type Config struct {
 	Runner []string `yaml:"runner"`
 	// DB is the SQLite file runs persist to.
 	DB string `yaml:"db"`
+	// Server is a habitat server to push finished runs to, e.g.
+	// https://habitat.np.lol. The token is never written here — it comes from
+	// HABITAT_TOKEN, so a config file can be committed safely.
+	Server string `yaml:"server"`
 	// Dir is the directory the config was found in. Not part of the format.
 	Dir string `yaml:"-"`
 }
